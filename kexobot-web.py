@@ -800,7 +800,7 @@ async def steelseries(url, session=None):
 
 async def alienwarearena(url, session):
     source = session.get(url).text
-
+    # Not working due to IP blocking
     pattern = re.compile(r'<title>(.*?)<', re.DOTALL)
     match = pattern.search(source)
     if match:

@@ -12,7 +12,7 @@
 Private discord python bot which checks selected websites for new info, updates and free deals.
 
 ## Versioning
-* Python stable version: ![version](https://img.shields.io/badge/version-3.11.4-blue)
+* Python:  ![version](https://img.shields.io/badge/version-3.11.4-blue)
 
 
 ## Built With
