@@ -12,4 +12,4 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 EXPOSE 8000
 
-CMD ["python", "KexoBOT_Web.py"]
+CMD ["python", "kexobot-web.py"]

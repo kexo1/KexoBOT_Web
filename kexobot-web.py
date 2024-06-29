@@ -18,9 +18,6 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 from discord.ext import tasks, commands
-from edupage_api import Edupage
-from edupage_api.timeline import EventType
-from edupage_api.utils import IdUtil
 from pymongo import MongoClient
 from deep_translator import GoogleTranslator
 
@@ -77,9 +74,6 @@ class Scraping:
             username="Kexotv",
             password=os.getenv('REDDIT'),
         )
-
-        self.edupage = Edupage()
-        # self.edupage.login("", "", "")
 
         self.parts = (
             'Download ', ' + OnLine', '-P2P', ' Build', ' + Update Only', ' + Update', ' + Online',
@@ -147,7 +141,7 @@ class Scraping:
                     embed = discord.Embed(title=game['title'] + version,
                                           url=game['link'],
                                           description=description, color=discord.Color.blue())
-                    embed.timestamp = datetime.utcnow()
+                    embed.timestamp = datetime.now(datetime.UTC)
                     embed.set_footer(text='https://online-fix.me',
                                      icon_url='https://media.discordapp.net/attachments/796453724713123870/1035951759505506364/favicon-1.png')
                     embed.set_thumbnail(url=image_link)
@@ -462,96 +456,6 @@ class Scraping:
                 asyncprawcore.exceptions.ResponseException, AssertionError):
             pass
 
-    async def edupage_news_check(self):
-
-        edupage_all = self.database.find_one({'_id': ObjectId('617958fae4043ee4a3f073f2')})
-        edupage_news = edupage_all['edupage_news_cache']
-
-        notifications = self.edupage.get_notifications()
-
-        if not notifications:
-            print('NO NOTIFICATIONS')
-            self.edupage = Edupage()
-            # self.edupage.login("", "", "")
-
-        news = [message for message in notifications if message.event_type == EventType.MESSAGE]
-        if 'TimelineEvent' not in str(notifications):
-            print(f'NOTIFICATIONS: {notifications}')
-
-        if news:
-            for message in news:
-                if message.text not in edupage_news:
-                    if (str(message.event_type) == 'EventType.MESSAGE'
-                            and '(Deti:' not in message.author
-                            and message.author != 'Martin Polanský'
-                            and message.additional_data.get('onlyFor') is not False
-                            and message.additional_data.get('onlyFor') != 'StudentOnly283289'):
-
-                        edupage_news = '$'.join(edupage_news.split('$')[-14:]) + f'{message.text}$'
-                        self.database.update_one({'_id': ObjectId('617958fae4043ee4a3f073f2')},
-                                                 {'$set': {'edupage_news_cache': edupage_news}})
-
-                        embed = discord.Embed(title=message.author,
-                                              color=discord.Color.orange())
-                        embed.add_field(name='Popis:', value=message.text + '\n') if len(message.text) < 980 else \
-                            embed.add_field(name='Popis:',
-                                            value='Pod embedom (správa presiahla limit veľkosti v embede)')
-                        number = len(message.text) >= 980
-
-                        attachements = message.additional_data.get('attachements')
-                        if attachements:
-                            subor, i = '', 0
-
-                            for url, filename in attachements.items():
-                                if '.jpg' in filename:
-                                    embed.set_image(url=f'https://katgymbs.edupage.org{url}')
-                                else:
-                                    i += 1
-                                    subor += f'{i}. [{filename}](https://katgymbs.edupage.org{url})\n'
-
-                            embed.add_field(name="Dokumenty:", value=subor, inline=False)
-
-                        embed.timestamp = message.timestamp
-                        embed.set_footer(text="https://katgymbs.edupage.org/user/",
-                                         icon_url='https://media.discordapp.net/attachments/796453724713123870/1080877484846878790/image.png')
-
-                        channel_edu = bot.get_channel(885788866903154748)
-                        await channel_edu.send(embed=embed)
-                        if number is True:
-                            await channel_edu.send(f'```{message.text}```')
-
-    async def edupage_homework_check(self):
-
-        edupage_all = self.database.find_one({'_id': ObjectId('617958fae4043ee4a3f073f2')})
-        edupage_uloha = edupage_all['edupage_homework_cache']
-
-        notifications = self.edupage.get_notifications()
-        homework = [message for message in notifications if message.event_type == EventType.HOMEWORK]
-
-        if homework:
-            for message in homework:
-                if message.text not in edupage_uloha:
-                    edupage_uloha = '$'.join(edupage_uloha.split('$')[-14:]) + f'{message.text}$'
-                    self.database.update_one({'_id': ObjectId('617958fae4043ee4a3f073f2')},
-                                             {'$set': {'edupage_homework_cache': edupage_uloha}})
-
-                    get_id, datum = IdUtil(self.edupage.data), message.additional_data.get('date')
-                    subject = get_id.id_to_subject(message.additional_data.get('predmetid'))
-                    datum = datum.replace('-', '.')
-                    message.text = message.text.replace('Zmenené: ', '')
-
-                    embed = discord.Embed(title=subject,
-                                          color=discord.Color.blue())
-                    embed.add_field(name='Popis:', value=message.text)
-                    embed.add_field(name="Do:", value=f'`{datum}`')
-
-                    embed.timestamp = message.timestamp
-                    embed.set_footer(text="https://katgymbs.edupage.org/user/",
-                                     icon_url='https://static.edupage.org/timeline/pics/typy/32/homework.png')
-
-                    channel_homework = bot.get_channel(766574810376568832)
-                    await channel_homework.send(embed=embed)
-
     async def elektrina_vypadky_check(self):
 
         to_upload = []
@@ -592,7 +496,7 @@ class Scraping:
                 embed = discord.Embed(title=title, url=link, description=post)
                 above_limit = False
 
-            embed.timestamp = datetime.utcnow()
+            embed.timestamp = datetime.now(datetime.UTC)
             embed.set_footer(text='',
                              icon_url='https://www.hliniknadhronom.sk/portals_pictures/i_006868/i_6868718.png')
             user = await bot.fetch_user(402221830930432000)
@@ -669,7 +573,7 @@ class Scraping:
             embed = discord.Embed(title=title, url=giveaway_link, description=description,
                                   colour=discord.Colour.brand_red())
             embed.set_image(url=image_link)
-            embed.timestamp = datetime.utcnow()
+            embed.timestamp = datetime.now(datetime.UTC)
             embed.set_footer(text=esutaze_link,
                              icon_url='https://www.startpage.com/av/proxy-image?piurl=https%3A%2F%2Fwww.esutaze.sk%2Fwp-content%2Fuploads%2F2016%2F11%2Flogo-esutaze.png&sp=1700075018T81dcbed0be165129a6c3452c1165a337a93663c6c749eacb888d407c52b0ad3f')
             user = await bot.fetch_user(402221830930432000)
@@ -694,45 +598,32 @@ async def daily_loop():
 
 @tasks.loop(minutes=5)
 async def main_loop():
-    now = datetime.now()
+    # now = datetime.now()
 
     if main_loop.counter == 0:
-        # If school holiday, or night, skip edupage check cycle to reddit_check (update 2024: no longer using edupage_api, code is skipped automatically)
-        if now.month not in (7, 8) and now.hour not in list(range(7)):
-            main_loop.counter = 1
-            await class_scraping.edupage_news_check()
-        else:
-            main_loop.counter = 3
-            await class_scraping.reddit_check()
+        main_loop.counter = 1
+        await class_scraping.reddit_check()
 
     elif main_loop.counter == 1:
         main_loop.counter = 2
-        await class_scraping.edupage_homework_check()
+        await class_scraping.game3rb_check()
 
     elif main_loop.counter == 2:
         main_loop.counter = 3
-        await class_scraping.reddit_check()
+        await class_scraping.onlinefix()
 
     elif main_loop.counter == 3:
         main_loop.counter = 4
-        await class_scraping.game3rb_check()
-
-    elif main_loop.counter == 4:
-        main_loop.counter = 5
-        await class_scraping.onlinefix()
-
-    elif main_loop.counter == 5:
-        main_loop.counter = 6
         await class_scraping.crack_news()
 
-    elif main_loop.counter == 6:
-        main_loop.counter = 2
+    elif main_loop.counter == 4:
+        main_loop.counter = 0
         await class_scraping.esutaze_check()
 
     await change_presences(main_loop.counter)
 
 
-main_loop.counter = 2
+main_loop.counter = 0
 
 
 @main_loop.before_loop
@@ -750,7 +641,7 @@ async def before_my_task():
 
 daily_loop.start()
 
-presences = ('Edupage - News', 'Free Games', 'Giveaway check', 'Free Games', 'Game3rb', 'Online-fix', 'New Repacks')
+presences = ('Giveaways', 'r/Free Game Findings', 'Game3rb', 'Online-fix', 'r/Crack News')
 
 
 async def change_presences(number):
